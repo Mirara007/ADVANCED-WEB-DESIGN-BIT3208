@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Deadline Radar</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Deadline Radar Dashboard</h1>
+        
+        <div class="dashboard-stats" id="stats">
+            <!-- Populated via JS -->
+        </div>
+
+        <div class="controls">
+            <input type="text" id="searchCourse" placeholder="Filter by Course" oninput="renderTable()">
+            <select id="filterType" onchange="renderTable()">
+                <option value="">All Types</option>
+                <option value="Assignment">Assignment</option>
+                <option value="CAT">CAT</option>
+                <option value="Exam">Exam</option>
+                <option value="Project">Project</option>
+            </select>
+            <button onclick="document.getElementById('addFormContainer').style.display='block'">+ Add Deadline</button>
+        </div>
+
+        <div id="addFormContainer" style="display:none; background:#f9f9f9; padding:15px; margin-bottom:20px; border-radius:6px;">
+            <h3>New Task</h3>
+            <form id="addForm">
+                <input type="text" id="title" placeholder="Title" required>
+                <input type="text" id="course" placeholder="Course Code" required>
+                <select id="type">
+                    <option value="Assignment">Assignment</option>
+                    <option value="CAT">CAT</option>
+                    <option value="Exam">Exam</option>
+                    <option value="Project">Project</option>
+                </select>
+                <input type="date" id="due_date" required>
+                <button type="submit">Save</button>
+                <button type="button" class="btn-danger" onclick="document.getElementById('addFormContainer').style.display='none'">Cancel</button>
+            </form>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Course</th>
+                    <th>Type</th>
+                    <th>Due Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        let allDeadlines = [];
+        
+        if (!token) window.location.href = 'login.html';
+
+        async function fetchDeadlines() {
+            const res = await fetch(`deadlines.php?token=${token}`);
+            const data = await res.json();
+            if (data.status === 'unauthorized') window.location.href = 'login.html';
+            allDeadlines = data;
+            calculateStats();
+            renderTable();
+        }
+
+        function calculateStats() {
+            let total = allDeadlines.length;
+            let completed = 0, overdue = 0, upcoming = 0;
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const nextWeek = new Date(today);
+            nextWeek.setDate(today.getDate() + 7);
+
+            allDeadlines.forEach(task => {
+                if (task.is_completed) {
+                    completed++;
+                    return;
+                }
+                const dueDate = new Date(task.due_date);
+                if (dueDate < today) overdue++;
+                else if (dueDate <= nextWeek) upcoming++;
+            });
+
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-box total">Total: ${total}</div>
+                <div class="stat-box upcoming">Due This Week: ${upcoming}</div>
+                <div class="stat-box overdue">Overdue: ${overdue}</div>
+                <div class="stat-box completed">Completed: ${completed}</div>
+            `;
+        }
+
+        function renderTable() {
+            const courseFilter = document.getElementById('searchCourse').value.toLowerCase();
+            const typeFilter = document.getElementById('filterType').value;
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            allDeadlines.forEach(task => {
+                if (courseFilter && !task.course.toLowerCase().includes(courseFilter)) return;
+                if (typeFilter && task.type !== typeFilter) return;
+
+                const tr = document.createElement('tr');
+                if (task.is_completed) tr.className = 'completed-row';
+                
+                tr.innerHTML = `
+                    <td>${task.title}</td>
+                    <td>${task.course}</td>
+                    <td>${task.task_type}</td>
+                    <td>${task.due_date}</td>
+                    <td>
+                        ${!task.is_completed ? `<button onclick="updateTask(${task.id}, 'complete')">Done ✓</button>` : ''}
+                        <button class="btn-danger" onclick="updateTask(${task.id}, 'delete')">Del ✕</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('addForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const body = new URLSearchParams({
+                token: token, action: 'add',
+                title: document.getElementById('title').value,
+                course: document.getElementById('course').value,
+                type: document.getElementById('type').value,
+                due_date: document.getElementById('due_date').value
+            });
+            await fetch('deadlines.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            });
+            document.getElementById('addFormContainer').style.display = 'none';
+            document.getElementById('addForm').reset();
+            fetchDeadlines();
+        };
+
+        async function updateTask(id, action) {
+            const body = new URLSearchParams({ token: token, action: action, id: id });
+            await fetch('deadlines.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            });
+            fetchDeadlines();
+        }
+
+        fetchDeadlines();
+    </script>
+</body>
+</html>

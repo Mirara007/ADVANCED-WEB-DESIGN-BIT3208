@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register - Deadline Radar</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Register</h2>
+        <form id="regForm">
+            <input type="text" id="username" placeholder="Username" required>
+            
+            <input type="password" id="password" placeholder="Password" required onkeyup="checkPasswordStrength()">
+            <span id="strengthMessage" style="font-size: 14px; font-weight: bold;"></span>
+            
+            <button type="submit">Create Account</button>
+        </form>
+        <a href="login.html" class="link-text">Already have an account? Login</a>
+    </div>
+
+    <script>
+        // WEEK 3 TASK 1: Password Strength Checker
+        function checkPasswordStrength() {
+            const password = document.getElementById('password').value;
+            const message = document.getElementById('strengthMessage');
+            
+            if (password.length === 0) {
+                message.innerHTML = "";
+            } else if (password.length < 5) {
+                message.innerHTML = "Weak Password ❌";
+                message.style.color = "red";
+            } else if (password.length >= 5 && password.length < 8) {
+                message.innerHTML = "Moderate Password ⚠️";
+                message.style.color = "orange";
+            } else {
+                message.innerHTML = "Strong Password ✅";
+                message.style.color = "green";
+            }
+        }
+
+        // Existing Registration Logic
+        document.getElementById('regForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const body = new URLSearchParams({
+                action: 'register',
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            });
+            
+            const res = await fetch('auth.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            });
+            const data = await res.json();
+            if (data.status === 'success') window.location.href = 'login.html';
+            else alert(data.message);
+        };
+    </script>
+</body>
+</html>
