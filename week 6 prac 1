@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Management System</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 40px 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h2 { margin: 0; color: #2c3e50; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; color: #333; }
+        
+        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 14px; font-weight: bold; }
+        .btn-primary { background-color: #3498db; }
+        .btn-edit { background-color: #f1c40f; color: #333; }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-cancel { background-color: #95a5a6; }
+        
+        /* Form Styles */
+        .form-section { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .form-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; flex: 1; }
+        
+        /* Hidden by default */
+        #editSection { display: none; background: #fff3cd; border: 1px solid #ffe69c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-flex">
+            <h2>Student Management System</h2>
+        </div>
+
+        <div class="form-section" id="addSection">
+            <h4 style="margin-top: 0; color: #3498db;">Add New Student</h4>
+            <div class="form-group">
+                <input type="text" id="addName" placeholder="Full Name">
+                <input type="email" id="addEmail" placeholder="Email Address">
+                <input type="text" id="addCourse" placeholder="Course">
+                <button class="btn btn-primary" onclick="addStudent()">+ Add Student</button>
+            </div>
+        </div>
+
+        <div class="form-section" id="editSection">
+            <h4 style="margin-top: 0; color: #d35400;">Edit Student</h4>
+            <div class="form-group">
+                <input type="hidden" id="editIndex">
+                <input type="text" id="editName" placeholder="Full Name">
+                <input type="email" id="editEmail" placeholder="Email Address">
+                <input type="text" id="editCourse" placeholder="Course">
+                <button class="btn btn-edit" onclick="saveEdit()">Update Student</button>
+                <button class="btn btn-cancel" onclick="cancelEdit()">Cancel</button>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Course</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="studentTableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        // 1. Initialize data with Mirara and Iceman
+        if(!localStorage.getItem('students')) {
+            const initialData = [
+                { name: 'Mirara', email: 'mirara@student.com', course: 'Computer Science' },
+                { name: 'Iceman', email: 'iceman@student.com', course: 'Information Technology' }
+            ];
+            localStorage.setItem('students', JSON.stringify(initialData));
+        }
+
+        // 2. Load data into table (VIEW)
+        function loadStudents() {
+            const students = JSON.parse(localStorage.getItem('students'));
+            const tbody = document.getElementById('studentTableBody');
+            tbody.innerHTML = '';
+            
+            students.forEach((student, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${student.name}</strong></td>
+                        <td>${student.email}</td>
+                        <td>${student.course}</td>
+                        <td>
+                            <button class="btn btn-edit" onclick="startEdit(${index})">Edit</button>
+                            <button class="btn btn-danger" onclick="deleteStudent(${index})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // 3. Add Student Logic (ADD)
+        function addStudent() {
+            const name = document.getElementById('addName').value;
+            const email = document.getElementById('addEmail').value;
+            const course = document.getElementById('addCourse').value;
+
+            if(!name || !email || !course) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            const students = JSON.parse(localStorage.getItem('students'));
+            students.push({ name, email, course });
+            localStorage.setItem('students', JSON.stringify(students));
+            
+            // Clear inputs and reload
+            document.getElementById('addName').value = '';
+            document.getElementById('addEmail').value = '';
+            document.getElementById('addCourse').value = '';
+            loadStudents();
+        }
+
+        // 4. Delete Student Logic (DELETE)
+        function deleteStudent(index) {
+            if(confirm('Are you sure you want to delete this student?')) {
+                const students = JSON.parse(localStorage.getItem('students'));
+                students.splice(index, 1);
+                localStorage.setItem('students', JSON.stringify(students));
+                loadStudents();
+            }
+        }
+
+        // 5. Edit Student Logic (EDIT)
+        function startEdit(index) {
+            const students = JSON.parse(localStorage.getItem('students'));
+            const student = students[index];
+
+            // Fill the edit form with the student's data
+            document.getElementById('editIndex').value = index;
+            document.getElementById('editName').value = student.name;
+            document.getElementById('editEmail').value = student.email;
+            document.getElementById('editCourse').value = student.course;
+
+            // Hide Add section, Show Edit section
+            document.getElementById('addSection').style.display = 'none';
+            document.getElementById('editSection').style.display = 'block';
+        }
+
+        function saveEdit() {
+            const index = document.getElementById('editIndex').value;
+            const name = document.getElementById('editName').value;
+            const email = document.getElementById('editEmail').value;
+            const course = document.getElementById('editCourse').value;
+
+            if(!name || !email || !course) {
+                alert("Fields cannot be empty.");
+                return;
+            }
+
+            const students = JSON.parse(localStorage.getItem('students'));
+            students[index] = { name, email, course };
+            localStorage.setItem('students', JSON.stringify(students));
+
+            cancelEdit(); // Hide edit form and clear it
+            loadStudents();
+        }
+
+        function cancelEdit() {
+            // Hide Edit section, Show Add section
+            document.getElementById('editSection').style.display = 'none';
+            document.getElementById('addSection').style.display = 'block';
+        }
+
+        // Initial Load on page startup
+        loadStudents();
+    </script>
+</body>
+</html>
