@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Deadline Radar</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #333; }
+        
+        .container { width: 100%; max-width: 1000px; padding: 20px; }
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .login-card { max-width: 350px; margin: 0 auto; text-align: center; }
+        
+        h2 { margin-top: 0; color: #2c3e50; }
+        
+        /* Stats Row */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-box { padding: 20px; border-radius: 8px; color: white; text-align: center; font-weight: bold; }
+        .stat-box.blue { background: #3498db; }
+        .stat-box.orange { background: #e67e22; }
+        .stat-box.red { background: #e74c3c; }
+        .stat-box.green { background: #2ecc71; }
+        .stat-value { font-size: 24px; margin-top: 5px; display: block; }
+        
+        /* Forms & Inputs */
+        .form-section { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .form-group { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; flex: 1; min-width: 150px; }
+        
+        /* Buttons */
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; white-space: nowrap; }
+        .btn-full { width: 100%; margin-bottom: 15px; }
+        .btn-primary { background: #3498db; } .btn-primary:hover { background: #2980b9; }
+        .btn-edit { background: #f39c12; }
+        .btn-danger { background: #e74c3c; }
+        .btn-done { background: #2ecc71; }
+        
+        /* Table */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #555; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        .badge-pending { background: #fdf2e9; color: #d35400; }
+        .badge-completed { background: #e8f8f5; color: #1abc9c; }
+        .badge-overdue { background: #fadbd8; color: #c0392b; }
+
+        /* Screens */
+        .screen { display: none; }
+        .active-screen { display: block; }
+        
+        .error { color: #e74c3c; font-size: 13px; margin-bottom: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen" class="container screen active-screen">
+        <div class="card login-card">
+            <h2>Deadline Radar</h2>
+            <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 20px;">Task Management System</p>
+            
+            <div id="loginError" class="error">Invalid credentials!</div>
+            
+            <input type="email" id="loginEmail" placeholder="Email (student@radar.com)" style="width: 100%; margin-bottom: 15px; box-sizing: border-box;">
+            <input type="password" id="loginPassword" placeholder="Password (pass123)" style="width: 100%; margin-bottom: 15px; box-sizing: border-box;">
+            <button class="btn btn-primary btn-full" onclick="login()">Access Dashboard</button>
+        </div>
+    </div>
+
+    <div id="dashboardScreen" class="container screen">
+        <div class="card">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px;">
+                <h2 style="margin: 0;">Radar Dashboard</h2>
+                <div>
+                    <span style="font-weight: bold; color: #555; margin-right: 15px;">Welcome, <span id="userName">User</span></span>
+                    <button class="btn btn-danger" onclick="logout()" style="padding: 6px 12px;">Logout</button>
+                </div>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-box blue">Total Tasks <span class="stat-value" id="statTotal">0</span></div>
+                <div class="stat-box orange">Pending <span class="stat-value" id="statPending">0</span></div>
+                <div class="stat-box red">Overdue <span class="stat-value" id="statOverdue">0</span></div>
+                <div class="stat-box green">Completed <span class="stat-value" id="statCompleted">0</span></div>
+            </div>
+
+            <div class="form-section" id="addSection">
+                <h4 style="margin-top: 0; color: #3498db;">+ Add New Deadline</h4>
+                <div class="form-group">
+                    <input type="text" id="taskTitle" placeholder="Task Title (e.g., Lab Report)">
+                    <input type="text" id="taskCourse" placeholder="Course Code">
+                    <input type="date" id="taskDate">
+                    <button class="btn btn-primary" onclick="addTask()">Save Task</button>
+                </div>
+            </div>
+
+            <div class="form-section" id="editSection" style="display: none; background: #fff3cd; border: 1px solid #ffe69c;">
+                <h4 style="margin-top: 0; color: #d35400;">✎ Edit Deadline</h4>
+                <input type="hidden" id="editIndex">
+                <div class="form-group">
+                    <input type="text" id="editTitle">
+                    <input type="text" id="editCourse">
+                    <input type="date" id="editDate">
+                    <button class="btn btn-edit" onclick="saveEdit()">Update</button>
+                    <button class="btn" style="background: #95a5a6;" onclick="cancelEdit()">Cancel</button>
+                </div>
+            </div>
+
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>Task Title</th>
+                        <th>Course</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="taskTableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. INITIALIZE DATA ---
+        if(!localStorage.getItem('radarUsers')) {
+            localStorage.setItem('radarUsers', JSON.stringify([{ name: 'Mirara', email: 'student@radar.com', password: 'pass123' }]));
+        }
+
+        if(!localStorage.getItem('radarTasks')) {
+            const defaultTasks = [
+                { title: 'Ethical Hacking Lab', course: 'BIT4138', date: '2026-05-19', status: 'pending' },
+                { title: 'Advanced Web Auth', course: 'BIT3208', date: '2025-01-01', status: 'pending' } // Intentionally old to show 'Overdue'
+            ];
+            localStorage.setItem('radarTasks', JSON.stringify(defaultTasks));
+        }
+
+        // Check if already logged in
+        if(sessionStorage.getItem('radarActiveUser')) {
+            document.getElementById('userName').innerText = sessionStorage.getItem('radarActiveUser');
+            switchScreen('dashboardScreen');
+            loadTasks();
+        }
+
+        // --- 2. AUTHENTICATION ---
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(screenId).classList.add('active-screen');
+        }
+
+        function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const users = JSON.parse(localStorage.getItem('radarUsers'));
+            
+            const user = users.find(u => u.email === email && u.password === password);
+            if(user) {
+                sessionStorage.setItem('radarActiveUser', user.name);
+                document.getElementById('userName').innerText = user.name;
+                document.getElementById('loginError').style.display = 'none';
+                switchScreen('dashboardScreen');
+                loadTasks();
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+            }
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            switchScreen('loginScreen');
+        }
+
+        // --- 3. CRUD OPERATIONS & LOGIC ---
+        function loadTasks() {
+            const tasks = JSON.parse(localStorage.getItem('radarTasks'));
+            const tbody = document.getElementById('taskTableBody');
+            tbody.innerHTML = '';
+            
+            let stats = { total: tasks.length, pending: 0, overdue: 0, completed: 0 };
+            const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD
+
+            tasks.forEach((task, index) => {
+                // Calculate Status dynamically
+                let currentStatus = task.status;
+                let badgeClass = 'badge-pending';
+                let statusText = 'Pending';
+
+                if (currentStatus === 'completed') {
+                    stats.completed++;
+                    badgeClass = 'badge-completed';
+                    statusText = 'Completed ✓';
+                } else if (task.date < today) {
+                    stats.overdue++;
+                    badgeClass = 'badge-overdue';
+                    statusText = 'Overdue !';
+                } else {
+                    stats.pending++;
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${task.title}</strong></td>
+                        <td>${task.course}</td>
+                        <td style="font-family: monospace;">${task.date}</td>
+                        <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                        <td>
+                            ${currentStatus !== 'completed' ? `<button class="btn btn-done" style="padding: 5px 10px; font-size: 12px;" onclick="markDone(${index})">✓</button>` : ''}
+                            <button class="btn btn-edit" style="padding: 5px 10px; font-size: 12px;" onclick="startEdit(${index})">✎</button>
+                            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deleteTask(${index})">✕</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Update Dashboard Stats
+            document.getElementById('statTotal').innerText = stats.total;
+            document.getElementById('statPending').innerText = stats.pending;
+            document.getElementById('statOverdue').innerText = stats.overdue;
+            document.getElementById('statCompleted').innerText = stats.completed;
+        }
+
+        function addTask() {
+            const title = document.getElementById('taskTitle').value;
+            const course = document.getElementById('taskCourse').value;
+            const date = document.getElementById('taskDate').value;
+
+            if(!title || !course || !date) return alert("Please fill in all task details.");
+
+            const tasks = JSON.parse(localStorage.getItem('radarTasks'));
+            tasks.push({ title, course, date, status: 'pending' });
+            localStorage.setItem('radarTasks', JSON.stringify(tasks));
+            
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskCourse').value = '';
+            document.getElementById('taskDate').value = '';
+            loadTasks();
+        }
+
+        function deleteTask(index) {
+            if(confirm("Remove this deadline?")) {
+                const tasks = JSON.parse(localStorage.getItem('radarTasks'));
+                tasks.splice(index, 1);
+                localStorage.setItem('radarTasks', JSON.stringify(tasks));
+                loadTasks();
+            }
+        }
+
+        function markDone(index) {
+            const tasks = JSON.parse(localStorage.getItem('radarTasks'));
+            tasks[index].status = 'completed';
+            localStorage.setItem('radarTasks', JSON.stringify(tasks));
+            loadTasks();
+        }
+
+        function startEdit(index) {
+            const tasks = JSON.parse(localStorage.getItem('radarTasks'));
+            const task = tasks[index];
+
+            document.getElementById('editIndex').value = index;
+            document.getElementById('editTitle').value = task.title;
+            document.getElementById('editCourse').value = task.course;
+            document.getElementById('editDate').value = task.date;
+
+            document.getElementById('addSection').style.display = 'none';
+            document.getElementById('editSection').style.display = 'block';
+        }
+
+        function saveEdit() {
+            const index = document.getElementById('editIndex').value;
+            const tasks = JSON.parse(localStorage.getItem('radarTasks'));
+            
+            tasks[index].title = document.getElementById('editTitle').value;
+            tasks[index].course = document.getElementById('editCourse').value;
+            tasks[index].date = document.getElementById('editDate').value;
+            
+            localStorage.setItem('radarTasks', JSON.stringify(tasks));
+            cancelEdit();
+            loadTasks();
+        }
+
+        function cancelEdit() {
+            document.getElementById('editSection').style.display = 'none';
+            document.getElementById('addSection').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
