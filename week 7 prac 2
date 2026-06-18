@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Corporate Employee Portal</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #2c3e50; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; color: #333; }
+        
+        .card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 100%; max-width: 380px; text-align: center; }
+        .dashboard-card { max-width: 700px; padding: 40px; text-align: left; }
+        
+        h2 { color: #2c3e50; margin-top: 0; margin-bottom: 10px; }
+        .subtitle { color: #7f8c8d; font-size: 14px; margin-bottom: 25px; }
+        
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; background: #f9f9f9; }
+        input:focus { border-color: #3498db; outline: none; background: #fff; }
+        
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
+        .btn-blue { background: #2980b9; } .btn-blue:hover { background: #2471a3; }
+        .btn-red { background: #c0392b; } .btn-red:hover { background: #a93226; }
+        
+        .link { display: inline-block; margin-top: 15px; color: #34495e; cursor: pointer; text-decoration: underline; font-size: 14px; font-weight: bold; }
+        .link:hover { color: #2980b9; }
+        
+        .msg { font-size: 14px; margin-bottom: 15px; display: none; padding: 10px; border-radius: 4px; }
+        .msg.error { background: #fadbd8; color: #c0392b; border: 1px solid #e74c3c; }
+        .msg.success { background: #d5f5e3; color: #27ae60; border: 1px solid #2ecc71; }
+        
+        /* Screen Management */
+        .screen { display: none; }
+        .active-screen { display: block; }
+
+        /* Dashboard Specifics */
+        .header-flex { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
+        .status-badge { background: #27ae60; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #eee; }
+        .data-label { font-size: 12px; color: #7f8c8d; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+        .data-value { font-size: 16px; font-weight: bold; color: #2c3e50; }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen" class="card screen active-screen">
+        <h2>Employee Gateway</h2>
+        <div class="subtitle">Authenticate to access the portal</div>
+        
+        <div id="loginMsg" class="msg error">Authentication Failed: Invalid credentials</div>
+        <div id="loginSuccess" class="msg success">Registration complete. Proceed to login.</div>
+        
+        <input type="email" id="loginEmail" placeholder="Corporate Email">
+        <input type="password" id="loginPassword" placeholder="Password">
+        <button class="btn btn-blue" onclick="attemptAuth()">Authenticate</button>
+        
+        <span class="link" onclick="switchScreen('registerScreen')">New Employee? Register Here</span>
+    </div>
+
+    <div id="registerScreen" class="card screen">
+        <h2>Employee Onboarding</h2>
+        <div class="subtitle">Register your corporate credentials</div>
+        
+        <div id="regMsg" class="msg error">Error: Email is already registered</div>
+        
+        <input type="text" id="regName" placeholder="Full Legal Name">
+        <input type="email" id="regEmail" placeholder="Corporate Email">
+        <input type="password" id="regPassword" placeholder="Secure Password">
+        <button class="btn btn-blue" onclick="registerEmployee()">Submit Registration</button>
+        
+        <span class="link" onclick="switchScreen('loginScreen')">Cancel & Return to Login</span>
+    </div>
+
+    <div id="dashboardScreen" class="card dashboard-card screen">
+        <div class="header-flex">
+            <h2 style="margin: 0;">Employee Workspace</h2>
+            <span class="status-badge">Session Active</span>
+        </div>
+        
+        <div class="data-grid">
+            <div>
+                <div class="data-label">Logged In As</div>
+                <div class="data-value" id="empNameDisplay">Loading...</div>
+            </div>
+            <div>
+                <div class="data-label">Security Clearance</div>
+                <div class="data-value">Standard User</div>
+            </div>
+            <div>
+                <div class="data-label">Corporate Email</div>
+                <div class="data-value" id="empEmailDisplay">Loading...</div>
+            </div>
+            <div>
+                <div class="data-label">System Time</div>
+                <div class="data-value" id="timeDisplay"></div>
+            </div>
+        </div>
+
+        <div style="background: #e8f4f8; padding: 15px; border-left: 4px solid #3498db; margin-bottom: 25px; font-size: 14px; color: #34495e;">
+            <strong>Protected Area:</strong> You have successfully bypassed the authentication gateway. This page is protected by strict session management rules.
+        </div>
+
+        <button class="btn btn-red" onclick="terminateSession()" style="width: auto; padding: 10px 20px;">Terminate Session</button>
+    </div>
+
+    <script>
+        // Set clock
+        setInterval(() => {
+            document.getElementById('timeDisplay').innerText = new Date().toLocaleTimeString();
+        }, 1000);
+
+        // Initialize Local Storage Database
+        if(!localStorage.getItem('corpEmployees')) {
+            const defaultEmp = [{ name: 'Mirara', email: 'mirara@company.com', password: 'secure123' }];
+            localStorage.setItem('corpEmployees', JSON.stringify(defaultEmp));
+        }
+
+        // SESSION MANAGEMENT: Check if user is already authenticated on page load
+        if(sessionStorage.getItem('corpSessionActive') === 'true') {
+            loadProtectedPage(sessionStorage.getItem('corpSessionName'), sessionStorage.getItem('corpSessionEmail'));
+        }
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(screenId).classList.add('active-screen');
+            document.querySelectorAll('.msg').forEach(m => m.style.display = 'none');
+        }
+
+        // REGISTRATION Logic
+        function registerEmployee() {
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+
+            if(!name || !email || !password) return alert("All fields are mandatory.");
+
+            const employees = JSON.parse(localStorage.getItem('corpEmployees'));
+            
+            if(employees.find(e => e.email === email)) {
+                document.getElementById('regMsg').style.display = 'block';
+                return;
+            }
+
+            employees.push({ name, email, password });
+            localStorage.setItem('corpEmployees', JSON.stringify(employees));
+
+            document.getElementById('regName').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            switchScreen('loginScreen');
+            document.getElementById('loginSuccess').style.display = 'block';
+        }
+
+        // AUTHENTICATION Logic
+        function attemptAuth() {
+            document.querySelectorAll('.msg').forEach(m => m.style.display = 'none');
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            const employees = JSON.parse(localStorage.getItem('corpEmployees'));
+            const emp = employees.find(e => e.email === email && e.password === password);
+
+            if(emp) {
+                // Set the Session Token
+                sessionStorage.setItem('corpSessionActive', 'true');
+                sessionStorage.setItem('corpSessionName', emp.name);
+                sessionStorage.setItem('corpSessionEmail', emp.email);
+                
+                document.getElementById('loginEmail').value = '';
+                document.getElementById('loginPassword').value = '';
+                
+                loadProtectedPage(emp.name, emp.email);
+            } else {
+                document.getElementById('loginMsg').style.display = 'block';
+            }
+        }
+
+        // PROTECTED PAGE Routing
+        function loadProtectedPage(name, email) {
+            // Security Check: Bounce back if no session token exists
+            if(sessionStorage.getItem('corpSessionActive') !== 'true') {
+                switchScreen('loginScreen');
+                return;
+            }
+            
+            document.getElementById('empNameDisplay').innerText = name;
+            document.getElementById('empEmailDisplay').innerText = email;
+            switchScreen('dashboardScreen');
+        }
+
+        // SESSION TERMINATION (Logout)
+        function terminateSession() {
+            sessionStorage.clear(); // Destroy the session token
+            switchScreen('loginScreen');
+        }
+    </script>
+</body>
+</html>
