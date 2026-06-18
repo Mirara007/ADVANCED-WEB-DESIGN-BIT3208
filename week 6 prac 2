@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Library Book Management System</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 40px 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h2 { margin: 0; color: #2c3e50; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; color: #333; }
+        
+        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 14px; font-weight: bold; }
+        .btn-primary { background-color: #27ae60; } /* Green for Library */
+        .btn-edit { background-color: #f1c40f; color: #333; }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-cancel { background-color: #95a5a6; }
+        
+        /* Form Styles */
+        .form-section { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .form-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; flex: 1; font-family: inherit; }
+        
+        /* Hidden by default */
+        #editSection { display: none; background: #fff3cd; border: 1px solid #ffe69c; }
+        .badge { background: #e8f4f8; color: #2980b9; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-flex">
+            <h2>Library Management System</h2>
+        </div>
+
+        <div class="form-section" id="addSection">
+            <h4 style="margin-top: 0; color: #27ae60;">Add New Book</h4>
+            <div class="form-group">
+                <input type="text" id="addTitle" placeholder="Book Title">
+                <input type="text" id="addAuthor" placeholder="Author">
+                <select id="addCategory">
+                    <option value="" disabled selected>Select Category</option>
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Cybersecurity">Cybersecurity</option>
+                    <option value="Networking">Networking</option>
+                    <option value="Fiction">Fiction</option>
+                </select>
+                <button class="btn btn-primary" onclick="addBook()">+ Add Book</button>
+            </div>
+        </div>
+
+        <div class="form-section" id="editSection">
+            <h4 style="margin-top: 0; color: #d35400;">Edit Book Details</h4>
+            <div class="form-group">
+                <input type="hidden" id="editIndex">
+                <input type="hidden" id="editBookId">
+                <input type="text" id="editTitle" placeholder="Book Title">
+                <input type="text" id="editAuthor" placeholder="Author">
+                <select id="editCategory">
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Cybersecurity">Cybersecurity</option>
+                    <option value="Networking">Networking</option>
+                    <option value="Fiction">Fiction</option>
+                </select>
+                <button class="btn btn-edit" onclick="saveEdit()">Update Book</button>
+                <button class="btn btn-cancel" onclick="cancelEdit()">Cancel</button>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Book ID</th>
+                    <th>Book Title</th>
+                    <th>Author</th>
+                    <th>Category</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="bookTableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        // 1. Initialize data with some default tech books
+        if(!localStorage.getItem('books')) {
+            const initialData = [
+                { id: 'LIB-1001', title: 'Advanced Cryptography', author: 'William Stallings', category: 'Cybersecurity' },
+                { id: 'LIB-1002', title: 'Clean Code', author: 'Robert C. Martin', category: 'Computer Science' }
+            ];
+            localStorage.setItem('books', JSON.stringify(initialData));
+        }
+
+        // 2. Load data into table (VIEW)
+        function loadBooks() {
+            const books = JSON.parse(localStorage.getItem('books'));
+            const tbody = document.getElementById('bookTableBody');
+            tbody.innerHTML = '';
+            
+            books.forEach((book, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="color: #555; font-family: monospace;"><strong>${book.id}</strong></td>
+                        <td><strong>${book.title}</strong></td>
+                        <td>${book.author}</td>
+                        <td><span class="badge">${book.category}</span></td>
+                        <td>
+                            <button class="btn btn-edit" onclick="startEdit(${index})">Edit</button>
+                            <button class="btn btn-danger" onclick="deleteBook(${index})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // 3. Add Book Logic (ADD)
+        function addBook() {
+            const title = document.getElementById('addTitle').value;
+            const author = document.getElementById('addAuthor').value;
+            const category = document.getElementById('addCategory').value;
+
+            if(!title || !author || !category) {
+                alert("Please fill in all book details.");
+                return;
+            }
+
+            // Generate a random Book ID (e.g., LIB-4928)
+            const newId = 'LIB-' + Math.floor(1000 + Math.random() * 9000);
+
+            const books = JSON.parse(localStorage.getItem('books'));
+            books.push({ id: newId, title, author, category });
+            localStorage.setItem('books', JSON.stringify(books));
+            
+            // Clear inputs and reload
+            document.getElementById('addTitle').value = '';
+            document.getElementById('addAuthor').value = '';
+            document.getElementById('addCategory').value = '';
+            loadBooks();
+        }
+
+        // 4. Delete Book Logic (DELETE)
+        function deleteBook(index) {
+            if(confirm('Are you sure you want to remove this book from the library?')) {
+                const books = JSON.parse(localStorage.getItem('books'));
+                books.splice(index, 1);
+                localStorage.setItem('books', JSON.stringify(books));
+                loadBooks();
+            }
+        }
+
+        // 5. Edit Book Logic (EDIT)
+        function startEdit(index) {
+            const books = JSON.parse(localStorage.getItem('books'));
+            const book = books[index];
+
+            // Fill the edit form
+            document.getElementById('editIndex').value = index;
+            document.getElementById('editBookId').value = book.id; // Keep the original ID
+            document.getElementById('editTitle').value = book.title;
+            document.getElementById('editAuthor').value = book.author;
+            document.getElementById('editCategory').value = book.category;
+
+            // Hide Add section, Show Edit section
+            document.getElementById('addSection').style.display = 'none';
+            document.getElementById('editSection').style.display = 'block';
+        }
+
+        function saveEdit() {
+            const index = document.getElementById('editIndex').value;
+            const id = document.getElementById('editBookId').value;
+            const title = document.getElementById('editTitle').value;
+            const author = document.getElementById('editAuthor').value;
+            const category = document.getElementById('editCategory').value;
+
+            if(!title || !author || !category) {
+                alert("Fields cannot be empty.");
+                return;
+            }
+
+            const books = JSON.parse(localStorage.getItem('books'));
+            books[index] = { id, title, author, category };
+            localStorage.setItem('books', JSON.stringify(books));
+
+            cancelEdit(); 
+            loadBooks();
+        }
+
+        function cancelEdit() {
+            document.getElementById('editSection').style.display = 'none';
+            document.getElementById('addSection').style.display = 'block';
+        }
+
+        // Initial Load on page startup
+        loadBooks();
+    </script>
+</body>
+</html>
