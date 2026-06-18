@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Portal</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        
+        .card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
+        .dashboard-card { max-width: 600px; padding: 40px 60px; }
+        
+        h2 { color: #2c3e50; margin-top: 0; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; display: inline-block; box-sizing: border-box; transition: 0.2s; }
+        .btn-blue { background: #3498db; } .btn-blue:hover { background: #2980b9; }
+        .btn-red { background: #e74c3c; } .btn-red:hover { background: #c0392b; }
+        
+        .link { display: block; margin-top: 15px; color: #7f8c8d; cursor: pointer; text-decoration: underline; font-size: 14px; }
+        .link:hover { color: #3498db; }
+        
+        .msg { font-size: 14px; margin-bottom: 15px; display: none; }
+        .msg.error { color: #e74c3c; }
+        .msg.success { color: #2ecc71; }
+        
+        /* Screen Toggles */
+        .screen { display: none; }
+        .active-screen { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen" class="card screen active-screen">
+        <h2>Portal Login</h2>
+        <div id="loginMsg" class="msg error">Invalid credentials</div>
+        <div id="loginSuccess" class="msg success">Registration successful! Please log in.</div>
+        
+        <input type="email" id="loginEmail" placeholder="Email Address">
+        <input type="password" id="loginPassword" placeholder="Password">
+        <button class="btn btn-blue" onclick="attemptLogin()">Secure Login</button>
+        
+        <span class="link" onclick="switchScreen('registerScreen')">Need an account? Register</span>
+    </div>
+
+    <div id="registerScreen" class="card screen">
+        <h2>Student Registration</h2>
+        <div id="regMsg" class="msg error">Email already exists!</div>
+        
+        <input type="text" id="regName" placeholder="Full Name">
+        <input type="email" id="regEmail" placeholder="Email Address">
+        <input type="password" id="regPassword" placeholder="Password">
+        <button class="btn btn-blue" onclick="registerUser()">Register</button>
+        
+        <span class="link" onclick="switchScreen('loginScreen')">Already have an account? Login</span>
+    </div>
+
+    <div id="dashboardScreen" class="card dashboard-card screen">
+        <h1 style="color: #2c3e50;">Welcome to the Student Portal</h1>
+        <p style="font-size: 18px;">You are securely logged in as: <strong id="studentNameDisplay">Student</strong></p>
+        
+        <div style="margin: 30px 0; padding: 20px; background: #e8f4f8; border-radius: 8px;">
+            <h3 style="color: #2980b9; margin-top: 0;">Academic Status: Active</h3>
+            <p style="color: #555;">Your session is securely established and authenticated.</p>
+        </div>
+
+        <button class="btn btn-red" onclick="logout()" style="max-width: 200px;">Secure Logout</button>
+    </div>
+
+    <script>
+        // Initialize the local "database"
+        if(!localStorage.getItem('portalUsers')) {
+            const defaultUser = [{ name: 'Mirara', email: 'mirara@student.com', password: 'password123' }];
+            localStorage.setItem('portalUsers', JSON.stringify(defaultUser));
+        }
+
+        // Check if already logged in when the page loads
+        if(sessionStorage.getItem('activeStudent')) {
+            showDashboard(sessionStorage.getItem('activeStudent'));
+        }
+
+        // Navigation Helper
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(screenId).classList.add('active-screen');
+            hideMessages();
+        }
+
+        function hideMessages() {
+            document.querySelectorAll('.msg').forEach(m => m.style.display = 'none');
+        }
+
+        // Registration Logic
+        function registerUser() {
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+
+            if(!name || !email || !password) return alert("Please fill all fields.");
+
+            const users = JSON.parse(localStorage.getItem('portalUsers'));
+            
+            // Check if email already exists
+            const userExists = users.find(u => u.email === email);
+            if(userExists) {
+                document.getElementById('regMsg').style.display = 'block';
+                return;
+            }
+
+            // Save new user
+            users.push({ name, email, password });
+            localStorage.setItem('portalUsers', JSON.stringify(users));
+
+            // Switch back to login with success message
+            document.getElementById('regName').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            switchScreen('loginScreen');
+            document.getElementById('loginSuccess').style.display = 'block';
+        }
+
+        // Login Logic
+        function attemptLogin() {
+            hideMessages();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            const users = JSON.parse(localStorage.getItem('portalUsers'));
+            const user = users.find(u => u.email === email && u.password === password);
+
+            if(user) {
+                sessionStorage.setItem('activeStudent', user.name);
+                document.getElementById('loginEmail').value = '';
+                document.getElementById('loginPassword').value = '';
+                showDashboard(user.name);
+            } else {
+                document.getElementById('loginMsg').style.display = 'block';
+            }
+        }
+
+        // Dashboard & Logout Logic
+        function showDashboard(name) {
+            document.getElementById('studentNameDisplay').innerText = name;
+            switchScreen('dashboardScreen');
+        }
+
+        function logout() {
+            sessionStorage.removeItem('activeStudent');
+            switchScreen('loginScreen');
+        }
+    </script>
+</body>
+</html>
